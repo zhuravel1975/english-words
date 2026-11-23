@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вчимо слова — English Words</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", Arial, sans-serif;
+    background: #f2f5fb; color: #1f2a44;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  header { text-align: center; padding: 20px 10px 5px; }
+  h1 { margin: 0; font-size: 26px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+  .tabs button {
+    border: none; padding: 10px 16px; border-radius: 20px; font-size: 16px;
+    background: #dfe6f5; cursor: pointer;
+  }
+  .tabs button.active { background: #3b6fe0; color: white; }
+  main { width: 100%; max-width: 520px; padding: 0 12px 30px; }
+  .box {
+    background: white; border-radius: 16px; padding: 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); text-align: center;
+  }
+  .card {
+    min-height: 200px; display: flex; flex-direction: column; justify-content: center;
+    align-items: center; cursor: pointer; user-select: none;
+  }
+  .word { font-size: 34px; font-weight: bold; margin: 10px 0; }
+  .hint { color: #8a94a8; font-size: 14px; }
+  .counter { color: #8a94a8; margin-bottom: 10px; }
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .btn {
+    border: none; padding: 12px 18px; border-radius: 10px; font-size: 16px; cursor: pointer;
+    background: #3b6fe0; color: white;
+  }
+  .btn.grey { background: #dfe6f5; color: #1f2a44; }
+  .btn.green { background: #2fa36b; }
+  .btn.red { background: #e05252; }
+  .speak { background: none; border: none; font-size: 26px; cursor: pointer; }
+  .options { display: grid; gap: 10px; margin-top: 16px; }
+  .options button {
+    padding: 14px; font-size: 18px; border-radius: 10px; border: 2px solid #dfe6f5;
+    background: white; cursor: pointer;
+  }
+  .options button.right { background: #d8f5e6; border-color: #2fa36b; }
+  .options button.wrong { background: #fde0e0; border-color: #e05252; }
+  input[type=text] {
+    width: 100%; padding: 14px; font-size: 20px; border-radius: 10px;
+    border: 2px solid #dfe6f5; text-align: center; margin-top: 14px;
+  }
+  .msg { min-height: 28px; margin-top: 12px; font-size: 18px; }
+  .ok { color: #2fa36b; } .bad { color: #e05252; }
+  .score { font-size: 18px; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  td { padding: 10px 6px; border-bottom: 1px solid #eef1f7; font-size: 17px; }
+  td:first-child { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Вчимо слова</h1>
+</header>
+
+<div class="tabs">
+  <button data-mode="list" class="active">Список</button>
+  <button data-mode="cards">Картки</button>
+  <button data-mode="quiz">Тест</button>
+  <button data-mode="write">Напиши слово</button>
+</div>
+
+<main id="app"></main>
+
+<script>
+// ===== СЛОВА: щоб додати нові, просто допишіть рядок у такому ж форматі =====
+const WORDS = [
+  { en: "take part in smth", ua: "брати участь у чомусь" },
+  { en: "valley",            ua: "долина" },
+  { en: "sticker",           ua: "наліпка" },
+  { en: "background",        ua: "досвід" },
+  { en: "identity",          ua: "ідентичність" },
+  { en: "hang out with smb", ua: "тусуватись" },
+  { en: "set up",            ua: "заснувати, поставити" },
+  { en: "take up",           ua: "почати займатися чимось" },
+];
+// =============================================================================
+
+const app = document.getElementById("app");
+let mode = "list";
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/\bsmth\b/g, "something").replace(/\bsmb\b/g, "somebody"));
+  u.lang = "en-US"; u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+// ---------- Список ----------
+function showList() {
+  app.innerHTML = `<div class="box"><table>${WORDS.map((w, i) => `
+    <tr><td>${w.en}</td><td>${w.ua}</td>
+    <td><button class="speak" onclick="speak(WORDS[${i}].en)">🔊</button></td></tr>`).join("")}
+  </table></div>`;
+}
+
+// ---------- Картки ----------
+let cards = [], cardIndex = 0, flipped = false;
+function startCards() { cards = shuffle(WORDS); cardIndex = 0; flipped = false; drawCard(); }
+function drawCard() {
+  const w = cards[cardIndex];
+  app.innerHTML = `
+    <div class="box">
+      <div class="counter">${cardIndex + 1} / ${cards.length}</div>
+      <div class="card" id="card">
+        <div class="word">${flipped ? w.ua : w.en}</div>
+        <div class="hint">${flipped ? w.en : "натисни, щоб побачити переклад"}</div>
+      </div>
+      <button class="speak" onclick="speak('${w.en.replace(/'/g, "\\'")}')">🔊</button>
+      <div class="row">
+        <button class="btn grey" id="prev">← Назад</button>
+        <button class="btn" id="next">Далі →</button>
+      </div>
+      <div class="row"><button class="btn grey" id="mix">🔀 Перемішати</button></div>
+    </div>`;
+  document.getElementById("card").onclick = () => { flipped = !flipped; drawCard(); };
+  document.getElementById("prev").onclick = () => { cardIndex = (cardIndex - 1 + cards.length) % cards.length; flipped = false; drawCard(); };
+  document.getElementById("next").onclick = () => { cardIndex = (cardIndex + 1) % cards.length; flipped = false; drawCard(); };
+  document.getElementById("mix").onclick = startCards;
+}
+
+// ---------- Тест ----------
+let quiz = [], qIndex = 0, score = 0;
+function startQuiz() { quiz = shuffle(WORDS); qIndex = 0; score = 0; drawQuiz(); }
+function drawQuiz() {
+  if (qIndex >= quiz.length) return finish(score, quiz.length, startQuiz);
+  const w = quiz[qIndex];
+  const wrong = shuffle(WORDS.filter(x => x !== w)).slice(0, 3);
+  const opts = shuffle([w, ...wrong]);
+  app.innerHTML = `
+    <div class="box">
+      <div class="counter">${qIndex + 1} / ${quiz.length} &nbsp;•&nbsp; ✅ ${score}</div>
+      <div class="word">${w.en} <button class="speak" onclick="speak('${w.en.replace(/'/g, "\\'")}')">🔊</button></div>
+      <div class="hint">Обери правильний переклад</div>
+      <div class="options">${opts.map((o, i) => `<button data-i="${i}">${o.ua}</button>`).join("")}</div>
+    </div>`;
+  const btns = app.querySelectorAll(".options button");
+  btns.forEach(b => b.onclick = () => {
+    const chosen = opts[b.dataset.i];
+    btns.forEach((x, i) => { x.disabled = true; if (opts[i] === w) x.classList.add("right"); });
+    if (chosen === w) score++; else b.classList.add("wrong");
+    setTimeout(() => { qIndex++; drawQuiz(); }, 1000);
+  });
+}
+
+// ---------- Напиши слово ----------
+let wr = [], wIndex = 0, wScore = 0;
+function startWrite() { wr = shuffle(WORDS); wIndex = 0; wScore = 0; drawWrite(); }
+function normalize(s) { return s.trim().toLowerCase().replace(/\s+/g, " "); }
+function drawWrite() {
+  if (wIndex >= wr.length) return finish(wScore, wr.length, startWrite);
+  const w = wr[wIndex];
+  app.innerHTML = `
+    <div class="box">
+      <div class="counter">${wIndex + 1} / ${wr.length} &nbsp;•&nbsp; ✅ ${wScore}</div>
+      <div class="word">${w.ua}</div>
+      <div class="hint">Напиши англійською</div>
+      <input type="text" id="answer" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="msg" id="msg"></div>
+      <div class="row">
+        <button class="btn" id="check">Перевірити</button>
+        <button class="btn grey" id="skip">Не знаю</button>
+      </div>
+    </div>`;
+  const input = document.getElementById("answer");
+  const msg = document.getElementById("msg");
+  input.focus();
+  let done = false;
+  function next() { wIndex++; drawWrite(); }
+  function check() {
+    if (done) return next();
+    done = true;
+    if (normalize(input.value) === normalize(w.en)) {
+      wScore++; msg.innerHTML = `<span class="ok">✅ Правильно!</span>`;
+    } else {
+      msg.innerHTML = `<span class="bad">❌ Правильно: <b>${w.en}</b></span>`;
+    }
+    speak(w.en);
+    document.getElementById("check").textContent = "Далі →";
+  }
+  document.getElementById("check").onclick = check;
+  document.getElementById("skip").onclick = () => { input.value = ""; check(); };
+  input.onkeydown = e => { if (e.key === "Enter") check(); };
+}
+
+// ---------- Результат ----------
+function finish(s, total, restart) {
+  const emoji = s === total ? "🏆" : s >= total * 0.7 ? "👍" : "💪";
+  app.innerHTML = `
+    <div class="box">
+      <div class="word">${emoji}</div>
+      <div class="score">Результат: <b>${s}</b> з <b>${total}</b></div>
+      <div class="row"><button class="btn green" id="again">Ще раз</button></div>
+    </div>`;
+  document.getElementById("again").onclick = restart;
+}
+
+// ---------- Вкладки ----------
+const starters = { list: showList, cards: startCards, quiz: startQuiz, write: startWrite };
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  mode = b.dataset.mode;
+  starters[mode]();
+});
+showList();
+</script>
+</body>
+</html>
